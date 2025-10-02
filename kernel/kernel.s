@@ -4,8 +4,7 @@
 mov si, kernel_loaded
 call print_string
 
-hang:
-    jmp hang
+jmp kernel
 
 print_string:
     pusha
@@ -22,4 +21,43 @@ print_string:
     popa
     ret
 
-kernel_loaded: db "Kernel Loaded"
+kernel_loaded: db "Kernel Loaded", KERNEL_NAME, 0
+
+kernel:
+    %include "kernel/modules/gdt.inc"
+    lgdt [gdt_descriptor]
+    jmp 0x08:protected_mode_entry
+
+protected_mode_entry:
+    ; Set data segment registers
+    mov ax, 0x10   ; data segment selector
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+    call stack_setup
+    jmp main_kernel
+
+STACK_TOP equ 0x9FFFF       ; e.g., 64 KB stack at 0x90000
+
+stack_setup:
+    ; Load data segment selector into stack segment
+    mov ax, 0x10            ; data segment selector from GDT
+    mov ss, ax
+
+    ; Set stack pointer
+    mov esp, STACK_TOP
+
+    ; Optional: clear stack memory (not required)
+    ; xor eax, eax
+    ; mov ecx, STACK_TOP / 4
+    ; mov edi, 0x0
+    ; rep stosd
+
+    ret
+
+main_kernel:
+    jmp main_kernel
+
+%include "kernel/modules/ata.inc"
