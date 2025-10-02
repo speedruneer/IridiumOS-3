@@ -6,3 +6,5 @@
 *.raw
 *.tmp
 .vscode
+*.c
+*.h

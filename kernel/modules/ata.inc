@@ -1,6 +1,22 @@
 %ifdef KERNEL_USE_ATA
 [bits 32]
+IDTDEF 48, ATA_DISK_SERVICE
+LOADIDT
+; bl = function (0=read,1=write), params: eax, cl, edi/esi
+ATA_DISK_SERVICE:
+    cmp bl, 1
+    jz .read
+    je .write
+    ret
+.read:
+    call ATA_LBA_READ
+    ret
+.write:
+    call ATA_LBA_WRITE
+    ret
 
+
+jmp ATAEND
 ;=============================================================================
 ; ATA read sectors (LBA mode, 32-bit protected mode)
 ;
@@ -150,4 +166,5 @@ ATA_LBA_WRITE:
     pop eax
     popfd
     ret
+ATAEND:
 %endif

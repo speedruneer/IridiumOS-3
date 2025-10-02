@@ -1,18 +1,23 @@
+# ------------------------------
 # Default config file
-CONFIG_FILE := config.mk
+# ------------------------------
+CONFIG_FILE ?= config.mk
 DEFAULT_CONFIG := default.mk
 
 # Include config file if it exists
 -include $(CONFIG_FILE)
 
 # ------------------------------
-# Variables
+# Paths
 # ------------------------------
 BOOTLOADER_PATH ?= bootloader
 BOOTLOADER_SRC  := $(BOOTLOADER_PATH)/bootloader.s
 BOOTLOADER_BIN  := $(BOOTLOADER_PATH)/bootloader.bin
 
-KERNEL_BIN      := $(KERNEL_PATH)kernel.bin  # kernel output path
+KERNEL_BIN      := $(KERNEL_PATH)/kernel.bin
+KERNEL_SRC      := $(KERNEL_PATH)/kernel.s
+
+BOOTABLE_BIN    := bootable.bin
 
 # ------------------------------
 # Dynamic NASM flags
@@ -25,12 +30,32 @@ ifeq ($(DISK_AHCI), true)
 BOOTLOADER_FLAGS += -DAHCI
 endif
 
-KERNEL_FLAGS := -DKERNEL_NAME=$(KERNEL_NAME)
+KERNEL_FLAGS := -DKERNEL_NAME=$(KERNEL_NAME) -DKERNEL_SECTORS=$(KERNEL_SECTORS)
 ifeq ($(VGA), true)
 KERNEL_FLAGS += -DVGA
 endif
 ifeq ($(DISK_AHCI), true)
 KERNEL_FLAGS += -DAHCI
+endif
+
+# Add future config keys automatically
+ifdef DISPLAY_USE_PRINT
+KERNEL_FLAGS += -DDISPLAY_USE_PRINT
+endif
+ifdef FS_USE_RWFS
+KERNEL_FLAGS += -DFS_USE_RWFS
+endif
+ifdef FS_USE_FAT12
+KERNEL_FLAGS += -DFS_USE_FAT12
+endif
+ifdef FS_USE_FAT16
+KERNEL_FLAGS += -DFS_USE_FAT16
+endif
+ifdef FS_USE_FAT32
+KERNEL_FLAGS += -DFS_USE_FAT32
+endif
+ifdef FS_USE_TMPFS
+KERNEL_FLAGS += -DFS_USE_TMPFS
 endif
 
 # ------------------------------
@@ -39,7 +64,7 @@ endif
 all: build
 
 # ------------------------------
-# menuconfig
+# Menuconfig
 # ------------------------------
 menuconfig:
 	@echo "Launching menuconfig..."
@@ -50,8 +75,7 @@ menuconfig:
 # ------------------------------
 defaultconfig:
 	@echo "Resetting config..."
-	@rm -f $(CONFIG_FILE)
-	@cp $(DEFAULT_CONFIG) $(CONFIG_FILE)
+	@cp -f $(DEFAULT_CONFIG) $(CONFIG_FILE)
 
 # ------------------------------
 # Bootloader compilation
@@ -65,24 +89,24 @@ $(BOOTLOADER_BIN): $(BOOTLOADER_SRC)
 # ------------------------------
 # Kernel compilation
 # ------------------------------
-# ------------------------------
-# Kernel compilation
-# ------------------------------
-kernel:
-	@echo "Assembling Kernel..."
-	nasm -f bin $(KERNEL_FLAGS) $(KERNEL_PATH)kernel.s -o $(KERNEL_BIN)
+kernel: $(KERNEL_BIN)
+
+$(KERNEL_BIN): $(KERNEL_SRC)
+	@echo "Assembling kernel..."
+	@echo $(KERNEL_FLAGS)
+	nasm -f bin $(KERNEL_FLAGS) $(KERNEL_SRC) -o $(KERNEL_BIN)
 
 # ------------------------------
-# Build combined bootable image
+# Bootable image
 # ------------------------------
 bootable: bootloader kernel
 	@echo "Creating bootable image..."
-	@cp $(BOOTLOADER_BIN) bootable.bin
-	@dd if=$(KERNEL_BIN) of=bootable.bin bs=512 seek=1 conv=notrunc status=none
-	@echo "Bootable image created: bootable.bin"
+	@cp -f $(BOOTLOADER_BIN) $(BOOTABLE_BIN)
+	@dd if=$(KERNEL_BIN) of=$(BOOTABLE_BIN) bs=512 seek=1 conv=notrunc status=none
+	@echo "Bootable image created: $(BOOTABLE_BIN)"
 
 # ------------------------------
-# Build target placeholder
+# Build target
 # ------------------------------
 build: bootable
 	@echo "Build complete."
