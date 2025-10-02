@@ -32,32 +32,28 @@ local function prompt_input(prompt)
     return val
 end
 
+-- Load config.mk (flat key=value)
 local function load_config(path)
     local conf = {}
     local f = io.open(path, "r")
     if not f then return conf end
-
     for line in f:lines() do
-        line = line:match("^%s*(.-)%s*$")  -- trim whitespace
-        if line ~= "" and not line:match("^;") and not line:match("^#") then
-            local k, v = line:match("^(.-)%s*=%s*(.-)%s*$")  -- arbitrary key/value
+        line = line:match("^%s*(.-)%s*$")
+        if line ~= "" and not line:match("^[;#]") then
+            local k, v = line:match("^(.-)%s*=%s*(.-)$")
             if k and v then
-                k = k:upper():gsub("%s","_")  -- normalize key to match menu keys
-                -- Convert value to proper type
+                k = k:gsub("%s","_")
                 if v == "true" then
                     v = true
                 elseif v == "false" then
                     v = false
                 elseif tonumber(v) then
                     v = tonumber(v)
-                else
-                    v = v  -- leave as string
                 end
                 conf[k] = v
             end
         end
     end
-
     f:close()
     return conf
 end
@@ -77,15 +73,16 @@ function Menu:draw()
     for i, item in ipairs(self.items) do
         term.cursor.goleft(600)
         local line = ""
+        local label = item.label
         if item.type == "bool" then
             local valstr = item.value and "[*]" or "[ ]"
-            line = valstr .. " " .. colors.green .. item.label .. colors.reset
+            line = valstr .. " " .. colors.green .. label .. colors.reset
         elseif item.type == "string" then
-            line = colors.cyan .. "(" .. tostring(item.value or "") .. ")" .. colors.reset .. " " .. item.label
+            line = colors.cyan .. "(" .. tostring(item.value or "") .. ")" .. colors.reset .. " " .. label
         elseif item.type == "number" then
-            line = colors.yellow .. tostring(item.value or 0) .. colors.reset .. " : " .. item.label
+            line = colors.yellow .. tostring(item.value or 0) .. colors.reset .. " : " .. label
         elseif item.type == "menu" then
-            line = colors.magenta .. "> " .. item.label .. colors.reset
+            line = colors.magenta .. "> " .. label .. colors.reset
         elseif item.type == "back" then
             line = colors.red .. "< Back" .. colors.reset
         end
@@ -96,12 +93,12 @@ function Menu:draw()
             io.write(line .. "\n")
         end
     end
+    term.cursor.goleft(600)
     io.flush()
 end
 
 function Menu:run()
-    local running = true
-    while running do
+    while true do
         self:draw()
         local key
         repeat key = readkey() until key
@@ -136,7 +133,7 @@ function Menu:run()
     end
 end
 
--- Save config to file
+-- Save config back to config.mk
 local function save_config(menu, path)
     local f = io.open(path, "w")
     if not f then error("Failed to open "..path.." for writing") end
@@ -146,32 +143,36 @@ local function save_config(menu, path)
             if item.type == "menu" and item.value then
                 write_menu(item.value)
             elseif item.type ~= "back" then
-                f:write(string.format("%s=%s\n", item.label:upper():gsub("%s","_"), tostring(item.value)))
+                if item.key then
+                    f:write(string.format("%s=%s\n", item.key, tostring(item.value)))
+                end
             end
         end
     end
-
     write_menu(menu)
     f:close()
 end
 
--- Load menus from ini file
+-- Load menus from menu.ini
 local function load_menus_from_ini(path, config)
     local menu_sections = {}
     local current_section = nil
 
     for line in io.lines(path) do
         line = line:match("^%s*(.-)%s*$")
-        if line ~= "" and not line:match("^;") and not line:match("^#") then
+        if line ~= "" and not line:match("^[;#]") then
             local section = line:match("^%[(.-)%]$")
             if section then
                 current_section = section
                 menu_sections[current_section] = {}
             elseif current_section then
-                local key, val = line:match("^(.-)%s*=%s*(.-)%s*$")
+                local key, val, label = line:match("^(.-)%s*=%s*([^:]+):?(.*)$")
                 if key and val then
-                    val = val:match("^(.-)%s*[;#]?%s*$") or val
-                    table.insert(menu_sections[current_section], {key = key, val = val})
+                    table.insert(menu_sections[current_section], {
+                        key   = key:gsub("%s","_"), -- canonical key
+                        val   = val,                        -- type
+                        label = (label ~= "" and label) or key -- human label
+                    })
                 end
             end
         end
@@ -179,6 +180,7 @@ local function load_menus_from_ini(path, config)
 
     local menus = {}
     local function build_menu(tag, parent)
+        tag = tag:gsub("_", " ")
         if menus[tag] then return menus[tag] end
         local items_raw = menu_sections[tag]
         if not items_raw then error("No section ["..tag.."] found") end
@@ -187,40 +189,34 @@ local function load_menus_from_ini(path, config)
         menus[tag] = menu_obj
 
         for _, item in ipairs(items_raw) do
-            local keyname = item.key:upper():gsub("%s","_")
-            if item.val == "MENU" then
+            local itype = item.val:lower()
+            if itype == "menu" then
                 local sub_menu = build_menu(item.key, menu_obj)
-                table.insert(items, {label=item.key, type="menu", value=sub_menu})
-            elseif item.val == "bool" then
-                table.insert(items, {label=item.key, type="bool", value=config[keyname] or false})
-            elseif item.val == "string" then
-                table.insert(items, {label=item.key, type="string", value=config[keyname] or ""})
-            elseif item.val == "number" then
-                table.insert(items, {label=item.key, type="number", value=config[keyname] or 0})
-            elseif item.val == "back" then
+                table.insert(items, {key=item.key, label=item.label, type="menu", value=sub_menu})
+            elseif itype == "bool" then
+                table.insert(items, {key=item.key, label=item.label, type="bool", value=config[item.key] or false})
+            elseif itype == "string" then
+                table.insert(items, {key=item.key, label=item.label, type="string", value=config[item.key] or ""})
+            elseif itype == "number" then
+                table.insert(items, {key=item.key, label=item.label, type="number", value=config[item.key] or 0})
+            elseif itype == "back" then
                 table.insert(items, {label="< Back", type="back"})
             end
         end
 
-        -- Always add a back button if this menu has a parent
         if parent then
             table.insert(items, {label="< Back", type="back"})
         end
-
-        -- Set parent of submenus
         for _, it in ipairs(items) do
             if it.type == "menu" and it.value then
                 it.value.parent = menu_obj
             end
         end
-
         menu_obj.items = items
         return menu_obj
     end
 
-    -- Explicitly start at Main Menu
-    local main_menu = build_menu("Main Menu", nil)
-    return main_menu
+    return build_menu("Main Menu", nil)
 end
 
 -- Load config and menu
@@ -239,7 +235,7 @@ local function print_menu(menu, indent)
             print(indent .. item.label .. ":")
             print_menu(item.value, indent .. "  ")
         elseif item.type ~= "back" then
-            print(indent .. item.label .. " = " .. tostring(item.value))
+            print(indent .. item.key .. " = " .. tostring(item.value))
         end
     end
 end

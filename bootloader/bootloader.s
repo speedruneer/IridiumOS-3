@@ -33,7 +33,7 @@ start:
     ; ------------------------------
     ; Set video mode
     ; ------------------------------
-    %ifdef VGA
+    %ifdef KERNEL_VGA
         mov ah, 0
         %warning "VGA Mode Is Defined?"
         mov al, 13h            ; 320x200x256

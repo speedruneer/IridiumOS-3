@@ -70,7 +70,7 @@ $(BOOTLOADER_BIN): $(BOOTLOADER_SRC)
 # ------------------------------
 kernel:
 	@echo "Assembling Kernel..."
-	nasm -f bin $(KERNEL_PATH)kernel.s -o $(KERNEL_BIN) $(KERNEL_FLAGS)
+	nasm -f bin $(KERNEL_FLAGS) $(KERNEL_PATH)kernel.s -o $(KERNEL_BIN)
 
 # ------------------------------
 # Build combined bootable image

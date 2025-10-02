@@ -1,6 +1,8 @@
 [bits 16]
 [org 0x9000]
 
+times 30 nop
+
 mov si, kernel_loaded
 call print_string
 
@@ -21,13 +23,15 @@ print_string:
     popa
     ret
 
-kernel_loaded: db "Kernel Loaded", KERNEL_NAME, 0
+%defstr KERNEL_NAME_STR KERNEL_NAME
+kernel_loaded: db "Loaded Kernel: ", KERNEL_NAME_STR, 0
 
 kernel:
     %include "kernel/modules/gdt.inc"
     lgdt [gdt_descriptor]
     jmp 0x08:protected_mode_entry
 
+[bits 32]
 protected_mode_entry:
     ; Set data segment registers
     mov ax, 0x10   ; data segment selector
@@ -50,10 +54,10 @@ stack_setup:
     mov esp, STACK_TOP
 
     ; Optional: clear stack memory (not required)
-    ; xor eax, eax
-    ; mov ecx, STACK_TOP / 4
-    ; mov edi, 0x0
-    ; rep stosd
+    xor eax, eax
+    mov ecx, STACK_TOP / 4
+    mov edi, 0x0
+    rep stosd
 
     ret
 
@@ -61,3 +65,5 @@ main_kernel:
     jmp main_kernel
 
 %include "kernel/modules/ata.inc"
+
+times 1024 dd 0

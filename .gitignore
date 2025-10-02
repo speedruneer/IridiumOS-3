@@ -5,3 +5,4 @@
 *.qcow2
 *.raw
 *.tmp
+.vscode
