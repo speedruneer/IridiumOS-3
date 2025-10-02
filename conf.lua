@@ -32,21 +32,32 @@ local function prompt_input(prompt)
     return val
 end
 
--- Config loader
 local function load_config(path)
     local conf = {}
     local f = io.open(path, "r")
     if not f then return conf end
+
     for line in f:lines() do
-        local k,v = line:match("(%w+)%s*=%s*(.+)")
-        if k and v then
-            if v == "true" then v = true
-            elseif v == "false" then v = false
-            elseif tonumber(v) then v = tonumber(v)
+        line = line:match("^%s*(.-)%s*$")  -- trim whitespace
+        if line ~= "" and not line:match("^;") and not line:match("^#") then
+            local k, v = line:match("^(.-)%s*=%s*(.-)%s*$")  -- arbitrary key/value
+            if k and v then
+                k = k:upper():gsub("%s","_")  -- normalize key to match menu keys
+                -- Convert value to proper type
+                if v == "true" then
+                    v = true
+                elseif v == "false" then
+                    v = false
+                elseif tonumber(v) then
+                    v = tonumber(v)
+                else
+                    v = v  -- leave as string
+                end
+                conf[k] = v
             end
-            conf[k] = v
         end
     end
+
     f:close()
     return conf
 end
@@ -157,8 +168,9 @@ local function load_menus_from_ini(path, config)
                 current_section = section
                 menu_sections[current_section] = {}
             elseif current_section then
-                local key, val = line:match("^(%w+)%s*=%s*(%w+)$")
+                local key, val = line:match("^(.-)%s*=%s*(.-)%s*$")
                 if key and val then
+                    val = val:match("^(.-)%s*[;#]?%s*$") or val
                     table.insert(menu_sections[current_section], {key = key, val = val})
                 end
             end
@@ -175,36 +187,39 @@ local function load_menus_from_ini(path, config)
         menus[tag] = menu_obj
 
         for _, item in ipairs(items_raw) do
+            local keyname = item.key:upper():gsub("%s","_")
             if item.val == "MENU" then
                 local sub_menu = build_menu(item.key, menu_obj)
                 table.insert(items, {label=item.key, type="menu", value=sub_menu})
             elseif item.val == "bool" then
-                local keyname = item.key:upper():gsub("%s","_")
                 table.insert(items, {label=item.key, type="bool", value=config[keyname] or false})
             elseif item.val == "string" then
-                local keyname = item.key:upper():gsub("%s","_")
                 table.insert(items, {label=item.key, type="string", value=config[keyname] or ""})
             elseif item.val == "number" then
-                local keyname = item.key:upper():gsub("%s","_")
                 table.insert(items, {label=item.key, type="number", value=config[keyname] or 0})
             elseif item.val == "back" then
                 table.insert(items, {label="< Back", type="back"})
             end
         end
 
-        -- Add automatic back button to submenus
+        -- Always add a back button if this menu has a parent
+        if parent then
+            table.insert(items, {label="< Back", type="back"})
+        end
+
+        -- Set parent of submenus
         for _, it in ipairs(items) do
             if it.type == "menu" and it.value then
-                table.insert(it.value.items, {label="< Back", type="back"})
                 it.value.parent = menu_obj
             end
         end
 
+        menu_obj.items = items
         return menu_obj
     end
 
-    local first_section = next(menu_sections)
-    local main_menu = build_menu(first_section, nil)
+    -- Explicitly start at Main Menu
+    local main_menu = build_menu("Main Menu", nil)
     return main_menu
 end
 

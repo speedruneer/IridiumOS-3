@@ -1,1 +1,6 @@
-KERNEL=kernel/
+KERNEL_PATH=kernel/
+KERNEL_NAME=IrKRNL
+KERNEL_SECTORS=1
+VGA=false
+DISK_ATA=false
+DISK_AHCI=false

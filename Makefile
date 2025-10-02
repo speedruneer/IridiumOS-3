@@ -1,36 +1,100 @@
-# Makefile
-
 # Default config file
 CONFIG_FILE := config.mk
+DEFAULT_CONFIG := default.mk
 
 # Include config file if it exists
 -include $(CONFIG_FILE)
 
+# ------------------------------
+# Variables
+# ------------------------------
+BOOTLOADER_PATH ?= bootloader
+BOOTLOADER_SRC  := $(BOOTLOADER_PATH)/bootloader.s
+BOOTLOADER_BIN  := $(BOOTLOADER_PATH)/bootloader.bin
+
+KERNEL_BIN      := $(KERNEL_PATH)kernel.bin  # kernel output path
+
+# ------------------------------
+# Dynamic NASM flags
+# ------------------------------
+BOOTLOADER_FLAGS := -DKERNEL_SECTORS=$(KERNEL_SECTORS)
+ifeq ($(VGA), true)
+BOOTLOADER_FLAGS += -DVGA
+endif
+ifeq ($(DISK_AHCI), true)
+BOOTLOADER_FLAGS += -DAHCI
+endif
+
+KERNEL_FLAGS := -DKERNEL_NAME=$(KERNEL_NAME)
+ifeq ($(VGA), true)
+KERNEL_FLAGS += -DVGA
+endif
+ifeq ($(DISK_AHCI), true)
+KERNEL_FLAGS += -DAHCI
+endif
+
+# ------------------------------
 # Default target
-all: default
+# ------------------------------
+all: build
 
-# Default target: just print current config
-default: 
-	@echo "Building with config:"
-	@echo "ENABLE_USB=$(ENABLE_USB)"
-	@echo "USE_EXT4=$(USE_EXT4)"
-	@echo "CFLAGS=$(CFLAGS)"
-
-# menuconfig target: run your Lua script
+# ------------------------------
+# menuconfig
+# ------------------------------
 menuconfig:
 	@echo "Launching menuconfig..."
 	@luajit conf.lua
 
-# defaultconfig: create a default config if none exists
+# ------------------------------
+# Reset config
+# ------------------------------
 defaultconfig:
-	@echo "Creating default config..."
-	@touch $(CONFIG_FILE)
-	@echo "ENABLE_USB=1" > $(CONFIG_FILE)
-	@echo "USE_EXT4=0" >> $(CONFIG_FILE)
+	@echo "Resetting config..."
+	@rm -f $(CONFIG_FILE)
+	@cp $(DEFAULT_CONFIG) $(CONFIG_FILE)
 
-# Clean: remove generated files
+# ------------------------------
+# Bootloader compilation
+# ------------------------------
+bootloader: $(BOOTLOADER_BIN)
+
+$(BOOTLOADER_BIN): $(BOOTLOADER_SRC)
+	@echo "Assembling bootloader..."
+	nasm -f bin $(BOOTLOADER_SRC) -o $(BOOTLOADER_BIN) $(BOOTLOADER_FLAGS)
+
+# ------------------------------
+# Kernel compilation
+# ------------------------------
+# ------------------------------
+# Kernel compilation
+# ------------------------------
+kernel:
+	@echo "Assembling Kernel..."
+	nasm -f bin $(KERNEL_PATH)kernel.s -o $(KERNEL_BIN)
+
+# ------------------------------
+# Build combined bootable image
+# ------------------------------
+bootable: bootloader kernel
+	@echo "Creating bootable image..."
+	@cp $(BOOTLOADER_BIN) bootable.bin
+	@dd if=$(KERNEL_BIN) of=bootable.bin bs=512 seek=1 conv=notrunc status=none
+	@echo "Bootable image created: bootable.bin"
+
+# ------------------------------
+# Build target placeholder
+# ------------------------------
+build: bootable
+	@echo "Build complete."
+
+# ------------------------------
+# Clean
+# ------------------------------
 clean:
 	@echo "Cleaning..."
-	@rm -f $(CONFIG_FILE)
+	@find . -type f -name "*.bin" -exec rm -f {} +
 
-.PHONY: all default menuconfig defaultconfig clean
+# ------------------------------
+# Phony targets
+# ------------------------------
+.PHONY: all build menuconfig defaultconfig bootloader kernel bootable clean
