@@ -100,8 +100,8 @@ print_string:
 
 BOOT_DRIVE: db 0
 RETRIES:    db 3
-msg_loading: db 'Loading kernel...',0
-msg_loaded: db 'Kernel Loaded!...',0
+msg_loading: db 'Loading kernel...                                                              ',0
+msg_loaded: db 'Kernel Loaded!...                                                               ',0
 msg_error:   db 'Disk read error!',0
 ; ------------------------------
 ; Boot signature

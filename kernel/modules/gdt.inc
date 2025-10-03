@@ -1,29 +1,35 @@
+bits 16
 ; ------------------------------
 ; GDT descriptor structure
 ; ------------------------------
 gdt_start:
-    ; NULL descriptor
-    dd 0x0
-    dd 0x0
 
-    ; Code segment: base=0, limit=4GB, 0x9A = code segment, 0xCF = granularity
-    dw 0xFFFF                  ; limit low
-    dw 0x0000                  ; base low
-    db 0x00                    ; base middle
-    db 10011010b               ; access byte: present, ring 0, code, executable, readable
-    db 11001111b               ; flags: 4 KB granularity, 32-bit
-    db 0x00                    ; base high
+; Null
+gdt_null:
+    dd 0
+    dd 0
 
-    ; Data segment: base=0, limit=4GB, 0x92 = data segment, 0xCF = granularity
-    dw 0xFFFF                  ; limit low
-    dw 0x0000                  ; base low
-    db 0x00                    ; base middle
-    db 10010010b               ; access byte: present, ring 0, data, writable
-    db 11001111b               ; flags: 4 KB granularity, 32-bit
-    db 0x00                    ; base high
+; Code segment
+gdt_code:
+    dw 0xFFFF      ; limit low
+    dw 0            ; base low
+    db 0            ; base mid
+    db 0x9A         ; access
+    db 0xCF         ; flags + limit high
+    db 0            ; base high
+
+; Data segment
+gdt_data:
+    dw 0xFFFF
+    dw 0
+    db 0
+    db 0x92
+    db 0xCF
+    db 0
+
 
 gdt_end:
 
 gdt_descriptor:
-    dw gdt_end - gdt_start - 1 ; limit
-    dd gdt_start               ; base
+    dw gdt_end - gdt_start - 1   ; limit
+    dd gdt_start                 ; base

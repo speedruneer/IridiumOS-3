@@ -94,7 +94,7 @@ kernel: $(KERNEL_BIN)
 $(KERNEL_BIN): $(KERNEL_SRC)
 	@echo "Assembling kernel..."
 	@echo $(KERNEL_FLAGS)
-	nasm -f bin $(KERNEL_FLAGS) $(KERNEL_SRC) -o $(KERNEL_BIN)
+	nasm -f bin -DKERNEL_BUILD_DATE="$(shell date)" $(KERNEL_FLAGS) $(KERNEL_SRC) -o $(KERNEL_BIN)
 
 # ------------------------------
 # Bootable image

@@ -1,5 +1,5 @@
-%ifdef KERNEL_USE_ATA
 [bits 32]
+%ifdef KERNEL_USE_ATA
 IDTDEF 48, ATA_DISK_SERVICE
 LOADIDT
 ; bl = function (0=read,1=write), params: eax, cl, edi/esi

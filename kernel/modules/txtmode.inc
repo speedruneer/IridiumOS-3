@@ -6,10 +6,6 @@
 ; This file is fine i think
 
 [BITS 32]
-; =====================================
-; TXT Mode / screen routines
-; =====================================
-
 %define VIDEO_MEMORY 0xb8000
 %define SCREEN_WIDTH 80
 %define SCREEN_HEIGHT 25
@@ -31,7 +27,10 @@
 %define YELLOW         14
 %define WHITE          15
 %define FOREGROUND     1
-%define BACKGROUND     10
+%define BACKGROUND     10h
+; =====================================
+; TXT Mode / screen routines
+; =====================================
 
 ; -------------------------------------
 ; setCharScreen: write a single char+color at AL=col, AH=row, BL=char, BH=color
@@ -76,10 +75,10 @@ setCharScreen:
     mov ah, %1
     movzx eax, ax
 
-%%clear_loop:
+%%.clear_loop:
     mov [edi], ax
     add edi, 2
-    loop %%clear_loop
+    loop %%.clear_loop
     popad
 %endmacro
 
@@ -125,3 +124,33 @@ print:
 %%done:
     popad
 %endmacro
+
+nibble_to_ascii:
+    cmp al, 9
+    jbe .digit
+    add al, 'A' - 10
+    ret
+.digit:
+    add al, '0'
+    ret
+
+int_to_char:
+    push eax
+
+    mov ah, al          ; save original AL
+    shr al, 4           ; high nibble
+    call nibble_to_ascii
+    mov [output_of_int_to_char], al  ; store high nibble
+
+    mov al, ah          ; restore original byte
+    and al, 0x0F        ; low nibble
+    call nibble_to_ascii
+    mov [output_of_int_to_char+1], al ; store low nibble
+
+    pop eax
+    ret
+
+; 2-byte buffer directly after function
+output_of_int_to_char:
+    dw 0    ; 2 bytes reserved
+    db 0

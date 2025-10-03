@@ -4,10 +4,17 @@
 mov al, 3
 mov ah, 0
 int 10h
+mov ah, 1
+mov cx, 2607h
+int 10h
+
+call print_string
+cli
 
 jmp kernel_in
 
 print_string:
+    sti
     pusha
 .next_char:
     lodsb
@@ -21,50 +28,64 @@ print_string:
 .done:
     popa
     ret
+%include "kernel/modules/gdt.inc"
 
 %defstr KERNEL_NAME_STR KERNEL_NAME
-kernel_loaded: db "Loaded Kernel: ", KERNEL_NAME_STR, 0
+%defstr KERNEL_BUILD_DATE_STR KERNEL_BUILD_DATE
+kernel_loaded:
+    db "Starting Kernel: "
+    db KERNEL_NAME_STR
+    times (80 - (%strlen(KERNEL_NAME_STR) + 17)) db ' '
+    db "build date: "
+    db KERNEL_BUILD_DATE_STR, 0
 
 kernel_in:
     mov si, kernel_loaded
     call print_string
+    mov ax, cs
+    mov ds, ax
+    mov ss, ax
+    mov esp, 9FC00h
     lgdt [gdt_descriptor]
+    mov eax, cr0
+    or  eax, 1        ; set PE bit
+    mov cr0, eax
     jmp 0x08:protected_mode_entry
 
-%include "kernel/modules/gdt.inc"
-
 [bits 32]
-%include "kernel/defines.inc"
+%include "kernel/modules/data_def.inc"
+%include "kernel/modules/txtmode.inc"
+
+%include "kernel/modules/idt.inc"
+%include "kernel/modules/irq.inc"
+
+%include "kernel/modules/ata.inc"
+;%include "kernel/modules/fs/fat.inc"
+;%include "kernel/modules/fs/rwfs.inc"
+
 protected_mode_entry:
     ; Set data segment registers
-    mov ax, 0x10
+    mov ax, 10h
     mov ds, ax
+    mov cs, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
     mov ss, ax
-    mov esp, STACK_TOP
-    jmp main_kernel
+    mov esp, 9FC00h
+    clearScreen 0x0F
+    printString 0, 0, printload, WHITE*FOREGROUND+BLACK*BACKGROUND
 
-main_kernel:
+printString 0, 1, kernload, WHITE*FOREGROUND+BLACK*BACKGROUND
+IDTINIT
+IRQINIT
+;call PIC_REMAP
+call LOADIDT
+sti
 
-%include "kernel/modules/idt.inc"
-%include "kernel/modules/ata.inc"
-;%include "kernel/modules/fs/fat.inc"
-%include "kernel/modules/fs/rwfs.inc"
-%include "kernel/modules/txtmode.inc"
+; todo: RWFS and finish FAT(12/16/32)
 
-; todo: IRQs, Core ISRs, RWFS and finish FAT(12/16/32)
+kernhang:
+    jmp $
 
-clearScreen 0xF0
-;printString 1, 1, printload, BLUE
-hang:
-mov cl, 1
-mov ah, 1
-mov esi, printload
-mov bh, BLUE
-call print
-jmp hang
-
-printload: db "[KERNEL] Loaded PRINT successfully", 0
-times 1024 dd 0
+times 4096 jmp kernhang
