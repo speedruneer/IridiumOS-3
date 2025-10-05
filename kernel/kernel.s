@@ -8,6 +8,7 @@ mov ah, 1
 mov cx, 2607h
 int 10h
 
+mov si, kernel_loaded
 call print_string
 cli
 
@@ -28,6 +29,7 @@ print_string:
 .done:
     popa
     ret
+
 %include "kernel/modules/gdt.inc"
 
 %defstr KERNEL_NAME_STR KERNEL_NAME
