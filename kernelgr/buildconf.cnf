@@ -1,0 +1,7 @@
+KERNEL_STD_FEATURES:
+  KERNEL_USE_STD_PRINTSYS: bool: true   # Use printsys(x, y, color, string_ptr)
+  KERNEL_USE_STD_PRINTF: bool: false    # Use printf(string_ptr, number) it's pretty limited yes
+  KERNEL_USE_STD_PRINTK: bool: false    # Use printk(string_ptr, text_videobuffer)
+  KERNEL_USE_STDATA: bool: true         # Use the stdata library in the kernel, if not used will not have inner disk support for ATA
+  KERNEL_USE_STDAHCI: bool: true        # Use the stdahci library in the kernel, if not used will not have inner disk support for AHCI (SATA)
+  KERNEL_USE_STDATAPI: bool: true       # Use the stdatapi library in the kernel, if not used will not have inner disk support for ATAPI (CD-ROM/DVD)

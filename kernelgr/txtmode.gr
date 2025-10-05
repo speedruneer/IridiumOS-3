@@ -58,8 +58,8 @@ void clearScreen(uint8 color) {
     return;
 }
 
-#ifdef KERNEL_USE_STD_PRINT
-void print(uint8 x, uint8 y, uint8 color, uint32 string_ptr) {
+#ifdef KERNEL_USE_STD_PRINTSYS
+void printsys(uint8 x, uint8 y, uint8 color, uint32 string_ptr) {
     pushad();
     esi = x;
     while () {
@@ -67,7 +67,7 @@ void print(uint8 x, uint8 y, uint8 color, uint32 string_ptr) {
         if (al == NULL) {
             break;
         }
-        setChar(x, y);
+        setChar(x, y); // now I'm gonna be honest, there's a... lack of line feeds
         x += 1;
         esi += 1; // I have no idea why but this looks like it works, I could just have used esi btw
     }
