@@ -119,5 +119,6 @@ printint:
     pop eax
     ret
 
-localtmp: times 8 dq 0
+localtmp: times 8 db 0
+    db 10, 0
 _endprintsys:

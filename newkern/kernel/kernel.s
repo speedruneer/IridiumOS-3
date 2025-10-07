@@ -8,7 +8,6 @@ PRINTSYS_PROPERLY_LOADED: db "[KERNEL] Loaded Successfully: PRINTSYS", 10
 PRINTK_PROPERLY_LOADED: db "[KERNEL] Loaded Successfully: PRINTK", 10
 EXCEPTIONS_PROPERLY_LOADED: db "[KERNEL] Loaded Successfully: EXCEPTIONS", 0
 
-%include "kernel/modules/tbl.inc"
 %include "kernel/modules/printsys.inc"
 %include "kernel/modules/idt.inc"
 %include "kernel/modules/exceptions.inc"
@@ -21,10 +20,7 @@ start:
     mov bh, 0x0F
     call clearScreen
 
-    DEFINE "printsys", printsys
-    GET "printsys", eax
-    mov bh, 0x0F
-    mov eax, 0xFF736164
+    ;mov bh, 0x0F
     call printint
 
     ;call [tmp2]
