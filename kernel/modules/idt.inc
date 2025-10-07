@@ -1,91 +1,104 @@
-; =====================================
-; idt.inc — flat 32-bit IDT + stubs
-; Protected mode safe version
-; =====================================
+;========================
+; idt.inc
+;========================
+; 32-bit IDT setup
+;------------------------
 
 BITS 32
 
-; ----- IDT table (256 entries, 8 bytes each)
+;------------------------
+; IDT table
+; 256 entries, 8 bytes each
+;------------------------
+align 8
+IDT:
+times 256 dq 0
 
-IDT_BASE:
-    times 256 dq 0
-IDT_END:
+IDTDescriptor:
+    dw 0          ; limit (size-1)
+    dd 0          ; base address
 
-; ----- IDT pointer (6 bytes)
-IDTPTR:
-    dw IDT_END - IDT_BASE - 1   ; limit
-    dd IDT_BASE                 ; base
+;------------------------
+; setidt: set one IDT entry
+; eax = handler address
+; bl  = index (0..255)
+;------------------------
+setidt:
+    push ebx
+    push ecx
+    push edx
 
-isr_stub_str: db "[KERNEL] Stub: ", 0
-; ------------------------------------
-; SETIDT — sets one entry in the IDT
-; AL  = entry number (0–255)
-; EBX = handler address
-; ------------------------------------
-SETIDT:
-    push edx                  ; save scratch
+    movzx bx, bl
+    shl ebx, 3            ; entry size = 8 bytes → offset in table
 
-    movzx edx, al             ; vector number -> EDX
-    shl edx, 3                ; 8 bytes per entry
-    lea edi, [IDT_BASE + edx] ; EDI = &IDT[vector]
-
-    mov eax, ebx              ; handler address
-    mov word [edi], bx        ; offset low 16 bits
-    mov word [edi+2], 08h     ; code segment selector
-    mov byte [edi+4], 0       ; reserved
-    mov byte [edi+5], 8Eh     ; type/attr (present, ring0, 32-bit int gate)
-    shr eax,16
-    mov word [edi+6], ax      ; offset high 16 bits
+    mov word [IDT + ebx + 0], ax         ; lower 16 bits of offset
+    shr eax, 16
+    mov word [IDT + ebx + 6], ax         ; upper 16 bits of offset
+    ; set selector (code segment)
+    mov word [IDT + ebx + 2], 0x08
+    ; type/flags: 0x8E = present, ring0, 32-bit interrupt gate
+    mov byte [IDT + ebx + 5], 0x8E
+    mov byte [IDT + ebx + 4], 0         ; zero byte
 
     pop edx
-    ret
-
-
-; ------------------------------------
-; Default ISR stub
-; ------------------------------------
-global isr_stub
-isr_stub:
-    call int_to_char
-    clearScreen 0x0F
-    printString 0, 0, isr_stub_str, RED*FOREGROUND+BLACK*BACKGROUND
-    printString 15, 0, output_of_int_to_char,RED*FOREGROUND+BLACK*BACKGROUND
-    ; optional: print vector or debug info here
-    cli
-.hang:
-    hlt
-    jmp .hang
-
-; ------------------------------------
-; LOADIDT — load IDT into CPU
-; ------------------------------------
-LOADIDT:
-    lidt [IDTPTR]
-    ret
-
-; ------------------------------------
-; Macros
-; ------------------------------------
-
-%macro IDTDEF 2
-    mov al, %1        ; vector number
-    mov ebx, %2       ; handler
-    call SETIDT
-%endmacro
-
-%macro IDTINIT 0
-    ; ---------------------------
-    ; CPU exceptions 0–31
-    ; ---------------------------
-    push eax
-    push ebx
-    mov al, 0
-%%lloop:
-    mov ebx, isr_stub
-    call SETIDT
-    inc al
-    cmp al, 31
-    jbe %%lloop
+    pop ecx
     pop ebx
-    pop eax
+    ret
+
+;------------------------
+; loadidt: load IDT
+;------------------------
+loadidt:
+    lea eax, [IDTDescriptor]
+    mov word [eax], 2047           ; 256*8-1 = 2047
+    lea edx, [IDT]
+    mov [eax+2], edx               ; base
+    lidt [eax]
+    ret
+
+;------------------------
+; SIDT macro (store IDT)
+;  usage: SIDT dest
+;  dest = 6-byte structure: dw limit, dd base
+;------------------------
+%macro SETIDT 2
+    mov eax, %1
+    mov bl, %1
+    call setidt
 %endmacro
+
+default_stub_int:
+    cli
+    pushad
+    pushfd
+
+    ; --- optional: do something for the IRQ ---
+
+    ; send EOI
+    cmp bl, 40h        ; IRQ number? (example for IRQ 8–15)
+    jb .master_only
+    mov al, 0x20
+    out 0xA0, al       ; EOI to slave
+.master_only:
+    mov al, 0x20
+    out 0x20, al       ; EOI to master
+
+    popfd
+    popad
+    sti
+    iret
+
+
+
+init_idt:
+    mov cl, 255
+.tmp:
+    mov eax, default_stub_int
+    mov bl, cl
+    call setidt
+    cmp cl, 0
+    jz .end
+    dec cl
+    jmp .tmp
+.end:
+    ret

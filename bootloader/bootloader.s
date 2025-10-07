@@ -1,90 +1,67 @@
-[bits 16]
-[org 0x7C00]
+BITS 16
+ORG 0x7C00
 
-; ------------------------------
-; Variables
-; ------------------------------
-
-; Messages
-
-; Stack setup
-STACK_SEG equ 0x0000
-STACK_SIZE equ 0x1000     ; 4 KB stack
-
-; ------------------------------
-; Bootloader start
-; ------------------------------
 start:
-    cli                     ; Disable interrupts
-
-    ; ------------------------------
-    ; Setup segments
-    ; ------------------------------
     xor ax, ax
     mov ds, ax
     mov es, ax
-    mov ax, STACK_SEG
     mov ss, ax
-    mov sp, STACK_SIZE      ; Stack grows downward
+    mov sp, 0x8000
 
-    ; Save boot drive
-    mov [BOOT_DRIVE], dl
+    mov [BOOT_DRIVE], dl   ; store boot drive
 
-    ; ------------------------------
-    ; Set video mode
-    ; ------------------------------
-    %ifdef KERNEL_VGA
-        mov ah, 0
-        %warning "VGA Mode Is Defined?"
-        mov al, 13h            ; 320x200x256
-        int 0x10
-    %endif
-
-    ; ------------------------------
-    ; Print loading message
-    ; ------------------------------
-    mov si, msg_loading
-    call print_string
-
-    ; ------------------------------
-    ; Load kernel to 0x9000
-    ; ------------------------------
-    mov si, RETRIES
-load_kernel:
-    mov ch, 0               ; Cylinder 0
-    mov cl, 2               ; Start after bootloader
-    mov dh, 0               ; Head 0
+    ; Load entry.s (assume 2 sectors)
+    mov bx, 0x9000         ; segment offset for entry.s
+    mov al, 1              ; sectors to load
+    mov si, 2              ; starting LBA (first kernel sector)
+    call read_sectors
+    jc load_fail
     mov dl, [BOOT_DRIVE]
-    mov bx, 0x9000          ; Offset
-    xor ax, ax
-    mov es, ax              ; Segment
-    mov ah, 0x02            ; BIOS read sectors
-    mov al, KERNEL_SECTORS
+
+    jmp 0x00:0x9000      ; jump to entry.s
+
+;-------------------------------
+; BIOS INT13h read sectors
+; AX = sectors to read
+; BX = buffer offset in ES
+; SI = starting LBA (simple CHS approximation)
+; DL = drive
+;-------------------------------
+read_sectors:
+    push ax
+    push bx
+    push cx
+    push dx
+
+    mov ah, 0x02
+    mov ch, 0
+    mov cl, 2
+    mov dh, 0
     int 0x13
-    jnc kernel_success
-    jc kernel_error
-    kernel_success:
-    mov si, msg_loaded
-    call print_string
-    mov dl, [BOOT_DRIVE]
-    jmp 0x0000:0x9000       ; Jump to kernel
 
-kernel_error:
-    dec si
-    jz disk_fail
-    jmp load_kernel
+    jc .fail
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+.fail:
+    stc
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
 
-disk_fail:
-    mov si, msg_error
-    call print_string
-    .hang:
-    jmp .hang
+load_fail:
+    mov al, ah
+    call byte_to_hex
+    mov [ERR_READ_TMP], ax
+    mov si, ERR_READ
+    call print
+    hlt
 
-; ------------------------------
-; Print string function
-; Input: DS:SI -> null-terminated string
-; ------------------------------
-print_string:
+print:
     pusha
 .next_char:
     lodsb
@@ -99,13 +76,27 @@ print_string:
     popa
     ret
 
+byte_to_hex:
+    mov ah, al
+    shr ah, 4
+    and al, 0x0F
+
+    cmp ah, 9
+    jle .hdone
+    add ah, 7
+.hdone:
+    add ah, '0'
+
+    cmp al, 9
+    jle .ldone
+    add al, 7
+.ldone:
+    add al, '0'
+    ret
+
 BOOT_DRIVE: db 0
-RETRIES:    db 3
-msg_loading: db 'Loading kernel...                                                              ',0
-msg_loaded: db 'Kernel Loaded!...                                                               ',0
-msg_error:   db 'Disk read error!',0
-; ------------------------------
-; Boot signature
-; ------------------------------
-times 510-($-$$) db 0
-dw 0xAA55
+ERR_READ:       db "Error reading disk: "
+ERR_READ_TMP:   db 0,0,"h",0
+
+TIMES 510-($-$$) db 0
+DW 0xAA55
