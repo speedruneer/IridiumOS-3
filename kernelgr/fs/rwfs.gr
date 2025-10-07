@@ -1,0 +1,16 @@
+// rwfs in gr yes
+#bits 32
+#include <std32.gr>
+
+struct RWFS_HEADER_STRUCT {
+    uint64 MAGIC;
+    char[16] PARTITION_NAME;
+    uint16 BLOCK_SIZE;
+    uint32 BLOCK_COUNT;
+} RWFS_HEADER;
+
+struct FILE_DEF {
+    char[32] FILENAME;
+    uint16 FLAGS;
+    uint32 CREATION_DATE;
+}

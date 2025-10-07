@@ -1,3 +1,0 @@
-// gdt.gr
-bits 16
-asm("gdt_start: dq 0 \n gdt_code: dw 0xFFFF, 0, 0, 0x9A, 0xCF, 0 \n gdt_data: dw 0xFFFF, 0, 0, 0x92, 0xCF, 0 \n gdt_end: \n gdt_descriptor: dw gdt_end - gdt_start - 1 \n dd gdt_start");

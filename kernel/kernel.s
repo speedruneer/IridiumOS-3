@@ -61,7 +61,7 @@ kernel_in:
 %include "kernel/modules/idt.inc"
 %include "kernel/modules/irq.inc"
 
-%include "kernel/modules/ata.inc"
+;%include "kernel/modules/ata.inc"
 ;%include "kernel/modules/fs/fat.inc"
 ;%include "kernel/modules/fs/rwfs.inc"
 
@@ -88,6 +88,6 @@ sti
 ; todo: RWFS and finish FAT(12/16/32)
 
 kernhang:
-    jmp $
+    jmp kernhang
 
 times 4096 jmp kernhang

@@ -1,0 +1,4 @@
+#bits 32
+#ifdef KERNEL_USE_PRINTSYS
+void printsys(uint32 str_ptr, uint8 x, uint8 y) {}
+#endif

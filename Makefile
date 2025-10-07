@@ -1,10 +1,9 @@
 # ------------------------------
-# Default config file
+# Config
 # ------------------------------
 CONFIG_FILE ?= config.mk
 DEFAULT_CONFIG := default.mk
 
-# Include config file if it exists
 -include $(CONFIG_FILE)
 
 # ------------------------------
@@ -14,49 +13,28 @@ BOOTLOADER_PATH ?= bootloader
 BOOTLOADER_SRC  := $(BOOTLOADER_PATH)/bootloader.s
 BOOTLOADER_BIN  := $(BOOTLOADER_PATH)/bootloader.bin
 
-KERNEL_BIN      := $(KERNEL_PATH)/kernel.bin
-KERNEL_SRC      := $(KERNEL_PATH)/kernel.s
+ENTRY_PATH ?= entry
+ENTRY_SRC  := $(ENTRY_PATH)/entry.s
+ENTRY_BIN  := $(ENTRY_PATH)/entry.bin
 
-BOOTABLE_BIN    := bootable.bin
+KERNEL_PATH ?= kernel
+KERNEL_SRC  := $(KERNEL_PATH)/kernel.s
+KERNEL_BIN  := $(KERNEL_PATH)/kernel.bin
+
+BOOTABLE_BIN := os.img
 
 # ------------------------------
-# Dynamic NASM flags
+# Compute kernel sectors dynamically
 # ------------------------------
-BOOTLOADER_FLAGS := -DKERNEL_SECTORS=$(KERNEL_SECTORS)
-ifeq ($(VGA), true)
-BOOTLOADER_FLAGS += -DVGA
-endif
-ifeq ($(DISK_AHCI), true)
-BOOTLOADER_FLAGS += -DAHCI
-endif
+KERNEL_SECTORS := $(shell stat -c%s $(KERNEL_BIN) 2>/dev/null | awk '{printf "%d\n", ($$1 + 511)/512}')
 
-KERNEL_FLAGS := -DKERNEL_NAME=$(KERNEL_NAME) -DKERNEL_SECTORS=$(KERNEL_SECTORS)
-ifeq ($(VGA), true)
-KERNEL_FLAGS += -DVGA
-endif
-ifeq ($(DISK_AHCI), true)
-KERNEL_FLAGS += -DAHCI
-endif
-
-# Add future config keys automatically
-ifdef DISPLAY_USE_PRINT
-KERNEL_FLAGS += -DDISPLAY_USE_PRINT
-endif
-ifdef FS_USE_RWFS
-KERNEL_FLAGS += -DFS_USE_RWFS
-endif
-ifdef FS_USE_FAT12
-KERNEL_FLAGS += -DFS_USE_FAT12
-endif
-ifdef FS_USE_FAT16
-KERNEL_FLAGS += -DFS_USE_FAT16
-endif
-ifdef FS_USE_FAT32
-KERNEL_FLAGS += -DFS_USE_FAT32
-endif
-ifdef FS_USE_TMPFS
-KERNEL_FLAGS += -DFS_USE_TMPFS
-endif
+# ------------------------------
+# NASM flags: automatic from config
+# ------------------------------
+# Every variable in config.mk becomes a -D flag automatically
+CONFIG_VARS := $(shell sed -n 's/^\([A-Z_0-9]*\) *=.*/\1/p' $(CONFIG_FILE) 2>/dev/null)
+NASM_FLAGS := $(foreach v,$(CONFIG_VARS),-D$(v)=$($(v)))
+NASM_FLAGS += -DKERNEL_SECTORS=$(KERNEL_SECTORS)
 
 # ------------------------------
 # Default target
@@ -78,31 +56,41 @@ defaultconfig:
 	@cp -f $(DEFAULT_CONFIG) $(CONFIG_FILE)
 
 # ------------------------------
-# Bootloader compilation
+# Bootloader
 # ------------------------------
 bootloader: $(BOOTLOADER_BIN)
 
 $(BOOTLOADER_BIN): $(BOOTLOADER_SRC)
 	@echo "Assembling bootloader..."
-	nasm -f bin $(BOOTLOADER_SRC) -o $(BOOTLOADER_BIN) $(BOOTLOADER_FLAGS)
+	@$(NASM) -f bin $(NASM_FLAGS) $< -o $@
 
 # ------------------------------
-# Kernel compilation
+# Entry
+# ------------------------------
+entry: $(ENTRY_BIN)
+
+$(ENTRY_BIN): $(ENTRY_SRC)
+	@echo "Assembling entry..."
+	@$(NASM) -f bin $(NASM_FLAGS) $< -o $@
+
+# ------------------------------
+# Kernel
 # ------------------------------
 kernel: $(KERNEL_BIN)
 
 $(KERNEL_BIN): $(KERNEL_SRC)
 	@echo "Assembling kernel..."
-	@echo $(KERNEL_FLAGS)
-	nasm -f bin -DKERNEL_BUILD_DATE="$(shell date)" $(KERNEL_FLAGS) $(KERNEL_SRC) -o $(KERNEL_BIN)
+	$(NASM) -f bin -DKERNEL_BUILD_DATE="$(shell date)" $(NASM_FLAGS) $< -o $@
 
 # ------------------------------
 # Bootable image
 # ------------------------------
-bootable: bootloader kernel
+bootable: bootloader entry kernel
 	@echo "Creating bootable image..."
-	@cp -f $(BOOTLOADER_BIN) $(BOOTABLE_BIN)
-	@dd if=$(KERNEL_BIN) of=$(BOOTABLE_BIN) bs=512 seek=1 conv=notrunc status=none
+	@dd if=/dev/zero of=$(BOOTABLE_BIN) bs=512 count=2880 status=none
+	@dd if=$(BOOTLOADER_BIN) of=$(BOOTABLE_BIN) bs=512 count=1 conv=notrunc status=none
+	@dd if=$(ENTRY_BIN) of=$(BOOTABLE_BIN) bs=512 seek=1 conv=notrunc status=none
+	@dd if=$(KERNEL_BIN) of=$(BOOTABLE_BIN) bs=512 seek=2 conv=notrunc status=none
 	@echo "Bootable image created: $(BOOTABLE_BIN)"
 
 # ------------------------------
@@ -121,4 +109,4 @@ clean:
 # ------------------------------
 # Phony targets
 # ------------------------------
-.PHONY: all build menuconfig defaultconfig bootloader kernel bootable clean
+.PHONY: all build menuconfig defaultconfig bootloader entry kernel bootable clean

@@ -66,6 +66,7 @@ load_kernel:
     kernel_success:
     mov si, msg_loaded
     call print_string
+    mov dl, [BOOT_DRIVE]
     jmp 0x0000:0x9000       ; Jump to kernel
 
 kernel_error:
