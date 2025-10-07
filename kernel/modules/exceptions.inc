@@ -13,6 +13,10 @@ global init_cpu_exceptions
 ; Safe print function
 ; Clears screen, prints string pointed by ESI with color BH
 ;------------------------
+; type: function
+; Prints safely (still uses printsys so unsafe but who cares)
+; -> eax input string addr
+; -> bh input color
 safe_print:
     pushad
     call clearScreen
@@ -372,6 +376,8 @@ exception_table:
 ; Initialize IDT entries 0–31
 ; Expects: setidt reads handler address in EAX and vector in BL
 ;------------------------
+; type: function
+; Initiate CPU Exceptions
 init_cpu_exceptions:
     cli
     xor ecx, ecx          ; ecx = 0

@@ -11,10 +11,12 @@ EXCEPTIONS_PROPERLY_LOADED: db "[KERNEL] Loaded Successfully: EXCEPTIONS", 0
 %include "kernel/modules/printsys.inc"
 %include "kernel/modules/idt.inc"
 %include "kernel/modules/exceptions.inc"
+%include "kernel/modules/blk/ata.inc"
 
 start:
     call init_idt
     call init_cpu_exceptions
+    call ATA_INIT
     call loadidt
     sti
     mov bh, 0x0F
@@ -32,5 +34,6 @@ start:
 
 hang:
     jmp hang
+
 tmp2: dq 0, 0, 0, 0, 0, 0
 tmp: dd 0, 0, 0, 0, 0, 0, 0

@@ -89,7 +89,8 @@ default_stub_int:
     iret
 
 
-
+; type: function
+; Initiate the IDT (a stub for all things)
 init_idt:
     mov cl, 255
 .tmp:

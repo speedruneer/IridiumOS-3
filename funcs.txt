@@ -1,0 +1,107 @@
+====================================
+Function: ATA_DISK_SERVICE
+Defined in: ./kernel/modules/blk/ata.inc
+
+Inputs:
+  -> bl function (0=read,1=write), params: eax, cl, edi/esi
+  -> eax param
+  -> cl param
+  -> edi param
+  -> esi param
+
+====================================
+Function: ATA_INIT
+Defined in: ./kernel/modules/blk/ata.inc
+
+Outputs:
+  Initiate the ATA disk service
+
+====================================
+Function: byte_to_hex
+Defined in: ./kernel/modules/printsys.inc
+
+Inputs:
+  -> al byte
+
+Outputs:
+  Process a byte into 2 hex chars
+  <- ax 2 hex chars
+
+====================================
+Function: clear
+Defined in: ./system/display.s
+
+Inputs:
+  -> bh color
+
+Outputs:
+  Clear screen (VGA/CGA text mode)
+
+====================================
+Function: init_cpu_exceptions
+Defined in: ./kernel/modules/exceptions.inc
+
+Outputs:
+  Initiate CPU Exceptions
+
+====================================
+Function: init_idt
+Defined in: ./kernel/modules/idt.inc
+
+Outputs:
+  Initiate the IDT (a stub for all things)
+
+====================================
+Function: load_function
+Defined in: ./kernel/modules/globaldrv.inc
+
+Inputs:
+  -> eax function pointer
+  -> ebx function id
+
+Outputs:
+  load a function into the global function table
+
+====================================
+Function: printint
+Defined in: ./kernel/modules/printsys.inc
+
+Inputs:
+  -> eax integer to print
+
+Outputs:
+  Print an integer 32 bit
+
+====================================
+Function: prints
+Defined in: ./system/display.s
+
+Inputs:
+  -> esi string pointer
+  -> bl text color
+
+Outputs:
+  Print in a driver
+
+====================================
+Function: printsys
+Defined in: ./kernel/modules/printsys.inc
+
+Inputs:
+  -> esi string pointer
+  -> bl text color
+
+Outputs:
+  Print system
+
+====================================
+Function: safe_print
+Defined in: ./kernel/modules/exceptions.inc
+
+Inputs:
+  -> eax input string addr
+  -> bh input color
+
+Outputs:
+  Prints safely (still uses printsys so unsafe but who cares)
+

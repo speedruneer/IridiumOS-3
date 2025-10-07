@@ -2,6 +2,10 @@ bits 32
 jmp _endprintsys
 CurrentCursorPos: dw 0
 _color: db 0
+; type: function
+; Process a byte into 2 hex chars
+; -> al byte
+; <- ax 2 hex chars
 byte_to_hex:
     mov ah, al
     shr al, 4
@@ -40,6 +44,10 @@ clearScreen:
     jne .tmp
     mov word[CurrentCursorPos], 0
     ret
+; type: function
+; Print system
+; -> esi string pointer
+; -> bl text color
 printsys:
     mov [_color], bh          ; store color
 .next_char:
@@ -86,6 +94,9 @@ printsys:
 ; Uses:
 ;   ecx, edx, esi, edi, temp stack
 ;------------------------
+; type: function
+; Print an integer 32 bit
+; -> eax integer to print
 printint:
     push eax
     push ebx
