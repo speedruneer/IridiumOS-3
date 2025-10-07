@@ -55,7 +55,7 @@ $(KERNEL_BIN): $(KERNEL_SRC)
 # ------------------------------
 bootable: clean $(KERNEL_BIN) $(ENTRY_BIN) $(BOOTLOADER_BIN)
 	@echo "Creating bootable image..."
-	@dd if=/dev/zero of=$(BOOTABLE_BIN) bs=512 count=2880 status=none
+	@dd if=/dev/zero of=$(BOOTABLE_BIN) bs=1024 count=256 status=none
 	@dd if=$(BOOTLOADER_BIN) of=$(BOOTABLE_BIN) bs=512 count=1 conv=notrunc status=none
 	@dd if=$(ENTRY_BIN) of=$(BOOTABLE_BIN) bs=512 seek=1 conv=notrunc status=none
 	@dd if=$(KERNEL_BIN) of=$(BOOTABLE_BIN) bs=512 seek=2 conv=notrunc status=none

@@ -132,4 +132,137 @@ printint:
 
 localtmp: times 8 db 0
     db 10, 0
+
+; type: function
+; Halts and prints all CPU registers (general purpose + segments + EFLAGS + EIP)
+printstate:
+    cli                 ; disable interrupts
+.hang:
+    push bx             ; save bx since we'll modify it
+    push ax
+    push cx
+    push dx
+    push si
+    push di
+    push bp
+
+    ; Clear the screen a few times (optional)
+    call clearScreen
+    call clearScreen
+    call clearScreen
+    call clearScreen
+    call clearScreen
+    call clearScreen
+    call clearScreen
+    call clearScreen
+    call clearScreen
+    call clearScreen
+    call clearScreen
+    call clearScreen
+
+    ; Dump general-purpose registers
+    mov eax, eax
+    call print_reg_eax
+    mov eax, ebx
+    call print_reg_ebx
+    mov eax, ecx
+    call print_reg_ecx
+    mov eax, edx
+    call print_reg_edx
+    mov eax, esi
+    call print_reg_esi
+    mov eax, edi
+    call print_reg_edi
+    mov eax, ebp
+    call print_reg_ebp
+
+    ; Dump segment registers
+    mov ax, cs
+    call print_reg_cs
+    mov ax, ds
+    call print_reg_ds
+    mov ax, es
+    call print_reg_es
+    mov ax, fs
+    call print_reg_fs
+    mov ax, gs
+    call print_reg_gs
+    mov ax, ss
+    call print_reg_ss
+
+    ; Dump EFLAGS
+    pushfd
+    pop eax
+    call print_reg_eflags
+
+    ; Halt the CPU
+    hlt
+    jmp .hang
+
+; ==========================
+; Example helper macros/functions for printing
+; ==========================
+print_reg_eax:   printk reg_eax_str, 0x0F
+                 call printint
+                 ret
+print_reg_ebx:   printk reg_ebx_str, 0x0F
+                 call printint
+                 ret
+print_reg_ecx:   printk reg_ecx_str, 0x0F
+                 call printint
+                 ret
+print_reg_edx:   printk reg_edx_str, 0x0F
+                 call printint
+                 ret
+print_reg_esi:   printk reg_esi_str, 0x0F
+                 call printint
+                 ret
+print_reg_edi:   printk reg_edi_str, 0x0F
+                 call printint
+                 ret
+print_reg_ebp:   printk reg_ebp_str, 0x0F
+                 call printint
+                 ret
+print_reg_cs:    printk reg_cs_str, 0x0F
+                 call printint
+                 ret
+print_reg_ds:    printk reg_ds_str, 0x0F
+                 call printint
+                 ret
+print_reg_es:    printk reg_es_str, 0x0F
+                 call printint
+                 ret
+print_reg_fs:    printk reg_fs_str, 0x0F
+                 call printint
+                 ret
+print_reg_gs:    printk reg_gs_str, 0x0F
+                 call printint
+                 ret
+print_reg_ss:    printk reg_ss_str, 0x0F
+                 call printint
+                 ret
+print_reg_eflags:printk reg_eflags_str, 0x0F
+                 call printint
+                 ret
+
+; ==========================
+; Strings for registers
+; ==========================
+reg_eax_str: db "EAX: ",0
+reg_ebx_str: db "EBX: ",0
+reg_ecx_str: db "ECX: ",0
+reg_edx_str: db "EDX: ",0
+reg_esi_str: db "ESI: ",0
+reg_edi_str: db "EDI: ",0
+reg_ebp_str: db "EBP: ",0
+reg_cs_str:  db "CS: ",0
+reg_ds_str:  db "DS: ",0
+reg_es_str:  db "ES: ",0
+reg_fs_str:  db "FS: ",0
+reg_gs_str:  db "GS: ",0
+reg_ss_str:  db "SS: ",0
+reg_eflags_str: db "EFLAGS: ",0
+
+
+
 _endprintsys:

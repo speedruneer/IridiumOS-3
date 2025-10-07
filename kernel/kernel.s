@@ -12,6 +12,7 @@ EXCEPTIONS_PROPERLY_LOADED: db "[KERNEL] Loaded Successfully: EXCEPTIONS", 0
 %include "kernel/modules/idt.inc"
 %include "kernel/modules/exceptions.inc"
 %include "kernel/modules/blk/ata.inc"
+%include "kernel/modules/fs/rwfs.inc"
 
 start:
     call init_idt
@@ -22,18 +23,15 @@ start:
     mov bh, 0x0F
     call clearScreen
 
-    ;mov bh, 0x0F
-    call printint
-
-    ;call [tmp2]
     printk KERNEL_PROPERLY_LOADED, 0x0F
-    mov eax, printsys
-    hlt
+    mov eax, 5
+    call rwfs_init
 
-
+times 1024 nop
+times 1024 add eax, 0
 
 hang:
+    call printstate
     jmp hang
 
-tmp2: dq 0, 0, 0, 0, 0, 0
 tmp: dd 0, 0, 0, 0, 0, 0, 0
